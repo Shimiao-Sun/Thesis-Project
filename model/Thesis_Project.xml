@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+const int N = 25; // number of nodes in this simulation. 
+const int nodeList[4] = {1, 3, 5, 25}; // target nodes list.
+
+chan UAVChannel[N+1], loc_msg, rep_msg, ack_msg[N+1], error_msg[N+1];
+broadcast chan find_msg, err_msg;
+int i, p_nodes, q_nodes = 0;
+int current_id, current_pid, init_neighbours;
+clock x;
+bool passing = true;
+
+// neighbour array
+typedef struct
+{
+    int node1;
+    int node2;
+    int node3;
+    int node4;
+} neighbour_t;
+
+void setNeighbours(neighbour_t &amp;neighbours, int node1, int node2, int node3, int node4) {
+    neighbours.node1 = node1;
+    neighbours.node2 = node2;
+    neighbours.node3 = node3;
+    neighbours.node4 = node4;
+}
+
+neighbour_t currentNeighbours;
+
+// Store current node id. 
+void setCurrentID(int id) {
+    current_id = id;
+}
+
+// Store current node's neighbours.
+void setCurrentNeighbours(neighbour_t neighbours){
+    currentNeighbours = neighbours;
+}
+
+// Check whether the node is in the range of broadcast.
+bool checkBroadcast(int id){
+    if(id==currentNeighbours.node1 || id==currentNeighbours.node2 || id==currentNeighbours.node3 || id==currentNeighbours.node4){
+        return true;
+    } 
+    return false;
+}
+
+// Store current node's parent node.
+void setCurrentPID(int id){
+    current_pid = id;
+}
+
+// Get current node's parent node.
+int getCurrentPID(){
+    return current_pid;
+}
+
+// Get initial node's id.
+int getInitID(){
+    return nodeList[i];
+}
+
+// Tranverse every initial node id in the nodeList.
+void nextNode(){
+    if(i&lt;2){
+        i+=1;
+    } else {
+        i = 0;
+    }
+}
+
+// Get current initial node id.
+int getInitNode(){
+    return nodeList[i];
+}
+
+// Get current tid.
+int getTid(){
+    return nodeList[i+1];
+} 
+
+// Check and set how many neibour nodes does the initial node have.
+void setInitNeighbours(int n_count){
+    init_neighbours = n_count;
+}
+
+// Return the value of p_nodes.
+int getPNodes(){
+    return p_nodes;
+}
+
+// Return the value of q_nodes.
+int getQNodes(){
+    return q_nodes;
+}
+
+// Return the value of init_neighbours.
+int getInitNeighbours(){
+    return init_neighbours;
+}
+
+// Reset the value of p_nodes and q_nodes after one iteration of porcessFindNode finished during the UAV is moving.
+void resetPQ(){
+    p_nodes = 0;
+    q_nodes = 0;
+}</declaration>
+	<template>
+		<name>WareHouse</name>
+		<declaration>
+</declaration>
+		<location id="id0" x="-204" y="-17">
+			<name x="-263" y="-25">Idle</name>
+		</location>
+		<location id="id1" x="59" y="-102">
+			<name x="49" y="-136">ProcessReport</name>
+			<committed/>
+		</location>
+		<location id="id2" x="68" y="59">
+			<name x="58" y="25">ProcessError</name>
+			<committed/>
+		</location>
+		<init ref="id0"/>
+		<transition id="id3">
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<nail x="-170" y="59"/>
+		</transition>
+		<transition id="id4">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<nail x="-178" y="-102"/>
+		</transition>
+		<transition id="id5">
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-68" y="0">err_msg?</label>
+		</transition>
+		<transition id="id6">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-68" y="-59">rep_msg?</label>
+		</transition>
+	</template>
+	<template>
+		<name>UAV</name>
+		<declaration>clock movingTime;
+</declaration>
+		<location id="id7" x="-263" y="-34">
+			<name x="-314" y="-51">Idle</name>
+		</location>
+		<location id="id8" x="8" y="-34">
+			<name x="25" y="-68">awaitAck</name>
+		</location>
+		<location id="id9" x="213" y="-34">
+			<name x="203" y="-68">processAck</name>
+			<committed/>
+		</location>
+		<location id="id10" x="408" y="-34">
+			<name x="391" y="-68">Moving</name>
+			<committed/>
+		</location>
+		<location id="id11" x="8" y="-170" color="#ff0000">
+			<name x="-25" y="-212">Terminate</name>
+		</location>
+		<init ref="id7"/>
+		<transition id="id12">
+			<source ref="id8"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="17" y="-127">err_msg?</label>
+			<nail x="8" y="-51"/>
+		</transition>
+		<transition id="id13">
+			<source ref="id10"/>
+			<target ref="id7"/>
+			<label kind="assignment" x="34" y="68">nextNode(),
+resetPQ()</label>
+			<nail x="408" y="68"/>
+			<nail x="-263" y="68"/>
+		</transition>
+		<transition id="id14">
+			<source ref="id9"/>
+			<target ref="id10"/>
+		</transition>
+		<transition id="id15">
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="76" y="-25">loc_msg?</label>
+		</transition>
+		<transition id="id16">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-238" y="-25">UAVChannel[getInitNode()]!</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Node</name>
+		<parameter>const int[1, N] id, int node1, int node2, int node3, int node4</parameter>
+		<declaration>// Place local declarations here.
+bool initial, find = false;
+int msg_list[4];
+int nextIndex = 0;
+int pid, count, neighboursCount = 0;
+neighbour_t neighbours;
+
+
+// Set the node as initial node that start the find process and directly communicate with the UAV.
+void setInit(){
+    initial = true;
+}
+
+// Get whether this node is the initial node.
+bool getInit(){
+    return initial;
+}
+
+// Set the node as find after this node participated in the finding process.
+void setFind(){
+    find = true;
+}
+
+// Get whether the node has been participated in the finding process.
+bool getFind(){
+    return find;
+}
+
+// Set this node's parent node.
+void setPID(int id){
+    pid = id;
+}
+
+// get this node's parent node.
+int getPID(){
+    return pid;
+}
+
+// Add messages received into the list. 1 refers to ack_msg and 0 refers to error_msg.
+void addMsg(int msg){
+    count+=1;
+    if(nextIndex &lt;= 3){
+        msg_list[nextIndex] = msg;
+        nextIndex++;
+    }
+}
+
+// Check whether there is ack_msg in the list.
+bool findAckMsg(int msg) {
+    for(i : int[0,3]) {
+        if(msg_list[i] == msg) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// reset every nodes.
+void reset(){
+    initial = false;
+    find = false;
+    nextIndex = 0;
+    addMsg(0);
+    addMsg(0);
+    addMsg(0);
+    nextIndex = 0;
+    pid = id;
+    neighboursCount = 0;
+    count = 0;
+}
+
+// Check how many neighbour nodes does this node have.
+void checkNeighbours(){
+    if(neighbours.node1!=0){
+        neighboursCount+=1;
+    } 
+    if(neighbours.node2!=0){
+        neighboursCount+=1;
+    } 
+    if(neighbours.node3!=0){
+        neighboursCount+=1;
+    } 
+    if(neighbours.node4!=0){
+        neighboursCount+=1;
+    }    
+}
+
+// Check how many child nodes does this node have.
+int checkCount(){
+    if(initial==true){
+        return neighboursCount;
+    } else {
+        return neighboursCount-1;
+    }
+}
+
+// return the count of neighbour nodes.
+int getneighboursCount(){
+    return neighboursCount;
+}
+
+// Check whether all second level nodes have participated in the processFindNode and have sent back error_msg or ack_msg back to their parent nodes.
+bool checkPoint(){
+    if(count==checkCount()){
+        return true;
+    } else if(count==checkCount()-1 &amp;&amp; getQNodes()==getPNodes()+getInitNeighbours() &amp;&amp; initial==false){
+        return true;
+    } else if(count==checkCount()-2 &amp;&amp; getQNodes()==getPNodes()+getInitNeighbours() &amp;&amp; initial==false){
+        return true;
+    } else {
+        return false;
+    }
+}</declaration>
+		<location id="id17" x="-1504" y="-960">
+			<name x="-1572" y="-952">Preset</name>
+			<committed/>
+		</location>
+		<location id="id18" x="-1037" y="-952">
+			<name x="-1104" y="-935">ProcessFindNode</name>
+			<committed/>
+		</location>
+		<location id="id19" x="-493" y="-952">
+			<name x="-527" y="-926">AwaitAck</name>
+		</location>
+		<location id="id20" x="-781" y="-1105">
+			<name x="-952" y="-1088">ProcessNodeNotFound</name>
+			<committed/>
+		</location>
+		<location id="id21" x="-781" y="-952">
+			<name x="-790" y="-943">CheckDistance</name>
+			<committed/>
+		</location>
+		<location id="id22" x="-1037" y="-790">
+			<name x="-1079" y="-782">ProcessAck</name>
+			<committed/>
+		</location>
+		<location id="id23" x="-314" y="-1045">
+			<name x="-365" y="-1088">ErrorMessage</name>
+			<committed/>
+		</location>
+		<location id="id24" x="-306" y="-858">
+			<name x="-348" y="-833">AckMessage</name>
+			<committed/>
+		</location>
+		<location id="id25" x="-1181" y="-697">
+			<name x="-1249" y="-680">ProcessReportLocation</name>
+			<committed/>
+		</location>
+		<location id="id26" x="-1096" y="-1198">
+			<name x="-1164" y="-1181">ProcessReportError</name>
+			<committed/>
+		</location>
+		<location id="id27" x="-1351" y="-960">
+			<name x="-1385" y="-943">Idle</name>
+		</location>
+		<init ref="id17"/>
+		<transition id="id28">
+			<source ref="id21"/>
+			<target ref="id19"/>
+			<label kind="guard" x="-705" y="-994">getInitID()==getPID() || 
+getInit()==true</label>
+			<label kind="synchronisation" x="-671" y="-952">find_msg!</label>
+			<label kind="assignment" x="-663" y="-935">passing = true</label>
+		</transition>
+		<transition id="id29">
+			<source ref="id21"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-773" y="-1062">getInitID()!=getPID()</label>
+			<label kind="assignment" x="-773" y="-1045">passing = true,
+p_nodes+=1</label>
+		</transition>
+		<transition id="id30">
+			<source ref="id27"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-1300" y="-935">getFind() == false &amp;&amp;
+checkBroadcast(id)==true</label>
+			<label kind="synchronisation" x="-1283" y="-892">find_msg?</label>
+			<label kind="assignment" x="-1283" y="-875">setPID(current_pid),
+checkNeighbours(),
+q_nodes+=1</label>
+			<nail x="-1300" y="-892"/>
+			<nail x="-1079" y="-892"/>
+		</transition>
+		<transition id="id31">
+			<source ref="id27"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-1274" y="-1054">getFind() == false</label>
+			<label kind="synchronisation" x="-1275" y="-1028">UAVChannel[id]?</label>
+			<label kind="assignment" x="-1292" y="-1011">setInit(),
+checkNeighbours(),
+setInitNeighbours(getneighboursCount())</label>
+			<nail x="-1291" y="-1028"/>
+			<nail x="-1087" y="-1028"/>
+		</transition>
+		<transition id="id32">
+			<source ref="id17"/>
+			<target ref="id27"/>
+			<label kind="assignment" x="-1470" y="-952">setNeighbours(neighbours, node1, node2, node3, node4),
+reset()</label>
+		</transition>
+		<transition id="id33">
+			<source ref="id26"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="-1461" y="-1198">err_msg!</label>
+			<nail x="-1504" y="-1198"/>
+		</transition>
+		<transition id="id34">
+			<source ref="id20"/>
+			<target ref="id26"/>
+			<label kind="guard" x="-968" y="-1215">getInit() == true</label>
+			<nail x="-781" y="-1198"/>
+			<nail x="-841" y="-1198"/>
+		</transition>
+		<transition id="id35">
+			<source ref="id25"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="-1436" y="-688">rep_msg!</label>
+			<nail x="-1504" y="-697"/>
+		</transition>
+		<transition id="id36">
+			<source ref="id22"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-1020" y="-731">getInit() == true</label>
+			<label kind="synchronisation" x="-1020" y="-714">loc_msg!</label>
+			<nail x="-1036" y="-697"/>
+		</transition>
+		<transition id="id37">
+			<source ref="id19"/>
+			<target ref="id22"/>
+			<label kind="guard" x="-773" y="-790">findAckMsg(1)==true &amp;&amp;
+checkPoint()</label>
+			<nail x="-493" y="-790"/>
+			<nail x="-518" y="-790"/>
+		</transition>
+		<transition id="id38">
+			<source ref="id19"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-705" y="-1147">findAckMsg(1)==false &amp;&amp;
+checkPoint()</label>
+			<nail x="-493" y="-1105"/>
+			<nail x="-535" y="-1105"/>
+		</transition>
+		<transition id="id39">
+			<source ref="id24"/>
+			<target ref="id19"/>
+			<label kind="assignment" x="-407" y="-858">addMsg(1)</label>
+			<nail x="-441" y="-858"/>
+		</transition>
+		<transition id="id40">
+			<source ref="id19"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="-442" y="-918">ack_msg[id]?</label>
+			<nail x="-339" y="-918"/>
+		</transition>
+		<transition id="id41">
+			<source ref="id23"/>
+			<target ref="id19"/>
+			<label kind="assignment" x="-415" y="-1062">addMsg(0)</label>
+			<nail x="-449" y="-1045"/>
+		</transition>
+		<transition id="id42">
+			<source ref="id19"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="-467" y="-994">error_msg[id]?</label>
+			<nail x="-340" y="-969"/>
+		</transition>
+		<transition id="id43">
+			<source ref="id20"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-1496" y="-1130">getInit() == false</label>
+			<label kind="synchronisation" x="-1478" y="-1105">error_msg[pid]!</label>
+			<nail x="-1444" y="-1105"/>
+		</transition>
+		<transition id="id44">
+			<source ref="id18"/>
+			<target ref="id22"/>
+			<label kind="guard" x="-1028" y="-833">id == getTid()</label>
+			<label kind="assignment" x="-1028" y="-875">setFind(),
+p_nodes+=1</label>
+		</transition>
+		<transition id="id45">
+			<source ref="id22"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-1326" y="-807">getInit() == false</label>
+			<label kind="synchronisation" x="-1309" y="-790">ack_msg[pid]!</label>
+			<nail x="-1453" y="-790"/>
+		</transition>
+		<transition id="id46">
+			<source ref="id18"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-952" y="-994">id != getTid() &amp;&amp;
+passing == true</label>
+			<label kind="assignment" x="-935" y="-952">setFind(),
+setCurrentID(id),
+setCurrentNeighbours(neighbours),
+setCurrentPID(id),
+passing = false</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+// List one or more processes to be composed into a system.
+
+/**
+node1 = Node(1,2,0,0,0);
+node2 = Node(2,1,3,0,0);
+node3 = Node(3,2,4,0,0);
+node4 = Node(4,3,5,0,0);
+node5 = Node(5,4,6,0,0);
+node6 = Node(6,5,7,0,0);
+node7 = Node(7,6,0,0,0);
+
+system UAV, WareHouse, node1, node2, node3, node4, node5, node6, node7;
+
+
+
+node1 = Node(1,2,7,19,0);
+node2 = Node(2,1,3,8,20);
+node3 = Node(3,2,4,9,21);
+node4 = Node(4,3,5,10,22);
+node5 = Node(5,4,6,11,23);
+node6 = Node(6,5,12,24,25);
+node7 = Node(7,1,8,13,0);
+node8 = Node(8,2,7,9,14);
+node9 = Node(9,3,8,10,15);
+node10 = Node(10,4,9,11,16);
+node11 = Node(11,5,10,12,17);
+node12 = Node(12,6,11,18,0);
+node13 = Node(13,7,14,0,0);
+node14 = Node(14,8,13,15,0);
+node15 = Node(15,9,14,16,0);
+node16 = Node(16,10,15,17,0);
+node17 = Node(17,11,16,18,0);
+node18 = Node(18,12,17,0,0);
+node19 = Node(19,1,20,0,0);
+node20 = Node(20,2,19,21,0);
+node21 = Node(21,3,20,22,0);
+node22 = Node(22,4,21,23,0);
+node23 = Node(23,5,22,24,0);
+node24 = Node(24,6,23,0,0);
+node25 = Node(25,6,0,0,0);
+
+
+system UAV, WareHouse, node1, node2, node3, node4, node5, node6, node7, node8, node9, node10, node11, node12, node13, node14, node15, node16, node17, node18, node19, node20, node21, node22, node23, node24, node25;
+*/
+
+node1 = Node(1,2,7,0,0);
+node2 = Node(2,1,3,8,0);
+node3 = Node(3,2,4,9,0);
+node4 = Node(4,3,5,10,0);
+node5 = Node(5,4,6,11,0);
+node6 = Node(6,5,12,0,25);
+node7 = Node(7,1,8,0,0);
+node8 = Node(8,2,7,9,0);
+node9 = Node(9,3,8,10,0);
+node10 = Node(10,4,9,11,0);
+node11 = Node(11,5,10,12,0);
+node12 = Node(12,6,11,0,0);
+node25 = Node(25,6,0,0,0);
+
+
+system UAV, WareHouse, node1, node2, node3, node4, node5, node6, node7, node8, node9, node10, node11, node12, node25;
+</system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-04-17 19:14:19 +1000">
+			</result>
+		</query>
+	</queries>
+</nta>
